@@ -1,5 +1,6 @@
 import pyglet
 import numpy as np
+import colorsys
 
 WIDTH=1366
 HEIGHT=720
@@ -26,15 +27,14 @@ class Window(pyglet.window.Window):
         life_happens()
 
         for square in squares.keys():
-            rgb_int = squares[square] % 0xFFFFFF
-            color = (rgb_int & 255, (rgb_int >> 8) & 255, (rgb_int >> 16) & 255)
-            color = (128, 128, 128)
-            batch_squares.append(pyglet.shapes.Rectangle(square[0]*SQUARE_SIZE, square[1]*SQUARE_SIZE, SQUARE_SIZE, SQUARE_SIZE, color=color, batch=batch))
+            gen = squares[square]
+            color = colorsys.hsv_to_rgb(gen/256, 1, 1)
+            batch_squares.append(pyglet.shapes.Rectangle(square[0]*SQUARE_SIZE, square[1]*SQUARE_SIZE, SQUARE_SIZE, SQUARE_SIZE, color=(int(color[0]*255), int(color[1]*255), int(color[2]*255)), batch=batch))
         batch.draw()
 
 def life_happens():
 
-    birth_cells = []
+    birth_cells = {}
     dead_cells = []
     potential_birth_cells = {}
 
@@ -48,13 +48,13 @@ def life_happens():
     for coord in potential_birth_cells.keys():
         count, gen = get_neighbors_count(*coord, {})
         if count == 3:
-            birth_cells.append(coord)
+            birth_cells[(coord)] = gen
 
     for coord in dead_cells:
         squares.pop(coord)
 
-    for coord in birth_cells:
-        squares[coord] = 1
+    for coord in birth_cells.keys():
+        squares[coord] = birth_cells[coord]
 
 def get_neighbors_count(x, y, potential_birth_cells):
     c = 0
@@ -69,11 +69,11 @@ def get_neighbors_count(x, y, potential_birth_cells):
     for coord in neighbors_coords:
         c, gen = evaluate_neighbour(*coord, c, gen, potential_birth_cells)
 
-    return c, gen + 1
+    return c, (gen//3) + 1
 
 def evaluate_neighbour(x, y, c, gen, potential_birth_cells):
     if 0 <= x * SQUARE_SIZE < WIDTH and 0 <= y * SQUARE_SIZE <= HEIGHT and (x, y) in squares:
-        return c+1, max(gen, squares[(x,y)])
+        return c+1, sum([gen, squares[(x,y)]])
     else:
         potential_birth_cells[(x,y)] = 1
         return c, gen
